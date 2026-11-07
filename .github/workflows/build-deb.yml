@@ -45,6 +45,7 @@ jobs:
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
           git clone --recursive https://github.com/theos/theos.git "$THEOS"
           # 純正 SDK に無い Preferences 等のプライベート framework を含む Theos 純正 SDK を使う
+          rm -rf "$THEOS/sdks"
           git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git "$THEOS/sdks"
           git -C "$THEOS/sdks" sparse-checkout set iPhoneOS16.5.sdk
           ls "$THEOS/sdks"
