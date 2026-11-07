@@ -33,6 +33,12 @@ jobs:
           ls -la
           test -f Makefile
 
+      - name: Install build tools (ldid, dpkg)
+        run: |
+          brew install ldid dpkg || brew install ldid dpkg
+          which ldid
+          which dpkg-deb || true
+
       - name: Install Theos
         run: |
           export THEOS="$HOME/theos"
@@ -60,3 +66,8 @@ jobs:
           name: build-log
           path: build.log
           if-no-files-found: ignore
+
+      - name: Show errors on failure
+        if: failure()
+        run: |
+          grep -E "error:" build.log | head -n 30 | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::$line"; done
