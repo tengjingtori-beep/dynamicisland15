@@ -1,0 +1,62 @@
+name: Build DEB
+
+# Mac を持っていなくても、GitHub の macOS ランナーで Theos を使って
+# Sileo 用 .deb をビルドする。SDK はランナー同梱の Xcode のものを使う。
+# リポジトリにプロジェクト一式を置いても、DynamicIsland15.zip を
+# 1 個置いただけでも動く (zip は自動で展開する)。
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'DynamicIsland15.zip'
+      - 'DynamicIsland15/**'
+      - '.github/workflows/build-deb.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unpack project zip if needed
+        run: |
+          if [ ! -f Makefile ]; then
+            for z in *.zip; do unzip -o "$z"; done
+          fi
+          if [ -d DynamicIsland15 ] && [ -f DynamicIsland15/Makefile ]; then
+            cp -R DynamicIsland15/. .
+          fi
+          ls -la
+          test -f Makefile
+
+      - name: Install Theos
+        run: |
+          export THEOS="$HOME/theos"
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          "$THEOS/bin/dependencies" 2>/dev/null || true
+          xcodebuild -version
+
+      - name: Build package (rootless)
+        run: |
+          make package FINALPACKAGE=1 2>&1 | tee build.log
+          ls -lh packages/
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: DynamicIsland15-deb
+          path: packages/*.deb
+          if-no-files-found: error
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
